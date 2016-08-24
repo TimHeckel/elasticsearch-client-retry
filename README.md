@@ -1,6 +1,9 @@
 ElasticSearch Client Retry wrapper
 ==================================
 
+# Travis Build [![Build Status](https://travis-ci.org/VivintSolar/elasticsearch-client-retry.png?branch=master)](https://travis-ci.org/VivintSolar/elasticsearch-client-retry)
+
+
 A small utility for handling ElasticSearch No living connections issues.
 elasticsearch-client-retry does not have any dependencies
 
