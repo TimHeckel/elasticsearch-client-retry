@@ -57,7 +57,6 @@ function createEs() {
   let objProto = {key: 'value'};
   let stringProto = 'string';
 
-
   function Client(actConfig) {
     ++counter;
     config = actConfig;
@@ -65,7 +64,6 @@ function createEs() {
 
   Client.prototype.objProto = objProto;
   Client.prototype.stringProto = stringProto;
-
 
   let es = {
     Client,
@@ -247,5 +245,38 @@ describe('Client tests', function () {
     let client = esRetry(es, config);
     es.config.should.equal(config);
     es.counter.should.equal(1);
-  })
+  });
+
+  it('will work when config is a function', function () {
+    let config = () => { return { host: { host: 'localhost', port: 9200, protocol: 'http'} }; };
+    let client = esRetry(es, config);
+    JSON.stringify(es.config).should.equal(JSON.stringify(config()));
+    es.counter.should.equal(1);
+  });
+
+  it('will retry callback AND fire onRetry whenever new connections are attempted', function (done) {
+    let counter = 0;
+    let cbFired = 0;
+    let config = () => { return { host: { host: 'localhost', port: 9200, protocol: 'http'} }; };
+    let onRetry = (rc) => { cbFired++; };
+
+    es.Client.prototype.testMethod = (cb) => {
+      ++counter;
+      return noLiving(cb);
+    };
+
+    let client = esRetry(es, config, retryCount, onRetry);
+
+    client.testMethod((err, res) => {
+      if (!err) {
+        done('fail');
+      } else {
+        counter.should.equal(retryCount);
+        cbFired.should.equal(retryCount - 1);
+        es.counter.should.equal(retryCount);
+        done();
+      }
+    });
+  });
+
 });

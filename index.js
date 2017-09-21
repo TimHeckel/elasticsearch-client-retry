@@ -1,18 +1,23 @@
 'use strict';
 
 
-function Client(es, config, retryCount) {
+function Client(es, config, retryCount, onRetry) {
   retryCount = retryCount || 10;
 
-  let client = new es.Client(config);
+  let client = new es.Client(getConfig());
 
-  function init() {
-    client = new es.Client(config);
+  function init(reconnectAttempts) {
+    client = new es.Client(getConfig());
+    onRetry && onRetry(reconnectAttempts);
   }
 
   function retryError(err, reconnectAttempts) {
     return (err.message == 'No Living connections' && reconnectAttempts < retryCount);
   }
+
+  function getConfig() {
+    return {}.toString.call(config) === '[object Function]' ? config() : config
+  };
 
   function asCallBack(func, args, reconnectAttempts) {
     reconnectAttempts = reconnectAttempts || 0;
@@ -21,7 +26,7 @@ function Client(es, config, retryCount) {
     let cb = args[args.length - 1];
     newArgs.push(function (err, res) {
       if (err && retryError(err, ++reconnectAttempts)) {
-        init();
+        init(reconnectAttempts);
         return asCallBack(func, args, reconnectAttempts);
       }
       cb(err, res);
@@ -35,7 +40,7 @@ function Client(es, config, retryCount) {
     return func.apply(client, args)
       .catch(err => {
         if (retryError(err, ++reconnectAttempts)) {
-          init();
+          init(reconnectAttempts);
           return asPromise(func, args, reconnectAttempts);
         }
         throw err;
